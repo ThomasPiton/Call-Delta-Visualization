@@ -1,0 +1,101 @@
+from math import log, sqrt, pi, exp
+from scipy.stats import norm
+from datetime import datetime, date
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from ipywidgets import interact, interactive, fixed, interact_manual
+import plotly.graph_objects as go
+from ipywidgets import widgets
+
+def d1(S,K,T,r,sigma):
+    return(log(S/K)+(r+sigma**2/2.)*T)/(sigma*sqrt(T))
+def d2(S,K,T,r,sigma):
+    return d1(S,K,T,r,sigma)-sigma*sqrt(T)
+
+def bs_call(S,K,T,r,sigma):
+    return S*norm.cdf(d1(S,K,T,r,sigma))-K*exp(-r*T)*norm.cdf(d2(S,K,T,r,sigma))
+
+def bs_put(S,K,T,r,sigma):
+    return K*exp(-r*T)*(1-norm.cdf(d2(S,K,T,r,sigma)))-S*(1-norm.cdf(d1(S,K,T,r,sigma)))
+
+def call_delta(S,K,T,r,sigma):
+    return norm.cdf(d1(S,K,T,r,sigma))
+def call_gamma(S,K,T,r,sigma):
+    return norm.pdf(d1(S,K,T,r,sigma))/(S*sigma*sqrt(T))
+def call_vega(S,K,T,r,sigma):
+    return 0.01*(S*norm.pdf(d1(S,K,T,r,sigma))*sqrt(T))
+def call_theta(S,K,T,r,sigma):
+    return 0.01*(-(S*norm.pdf(d1(S,K,T,r,sigma))*sigma)/(2*sqrt(T)) - r*K*exp(-r*T)*norm.cdf(d2(S,K,T,r,sigma)))
+def call_rho(S,K,T,r,sigma):
+    return 0.01*(K*T*exp(-r*T)*norm.cdf(d2(S,K,T,r,sigma)))
+    
+def put_delta(S,K,T,r,sigma):
+    return -norm.cdf(-d1(S,K,T,r,sigma))
+def put_gamma(S,K,T,r,sigma):
+    return norm.pdf(d1(S,K,T,r,sigma))/(S*sigma*sqrt(T))
+def put_vega(S,K,T,r,sigma):
+    return 0.01*(S*norm.pdf(d1(S,K,T,r,sigma))*sqrt(T))
+def put_theta(S,K,T,r,sigma):
+    return 0.01*(-(S*norm.pdf(d1(S,K,T,r,sigma))*sigma)/(2*sqrt(T)) + r*K*exp(-r*T)*norm.cdf(-d2(S,K,T,r,sigma)))
+def put_rho(S,K,T,r,sigma):
+    return 0.01*(-K*T*exp(-r*T)*norm.cdf(-d2(S,K,T,r,sigma)))
+
+x=5
+y=15
+Step_Spot=0.1
+Spot = np.arange(x, y, Step_Spot)
+
+Stime=0.01
+Etime=1
+Step_Time=0.01
+Time = np.arange(Stime, Etime, Increment)
+
+K=10
+r=0.04
+sigma=0.3
+
+df=pd.DataFrame(Spot,columns=['Spot'])
+df['Strike']=K
+
+Delta_Call=[]
+
+for t in Time:
+    for s in Spot:
+        S=s
+        T=t
+        key_Name = "Delta t=" + str(round(t,2))
+        Delta_Call.append(call_delta(S,K,T,r,sigma))
+        
+    df[key_Name]=Delta_Call
+    Delta_Call=[]
+    
+#df
+
+
+def plot_func(Maturity):
+    x = df['Spot']
+    y1=df['Delta t=0.1']
+    Delta="Delta t="+str(round(Maturity,2))
+    y2 = df[Delta]
+    plt.plot(x, y1, x, y2)
+    plt.grid(True)
+    plt.ylabel("Delta Call",fontsize=10)
+    plt.xlabel("Spot")
+    plt.suptitle("Delta vs Spot")
+    plt.show
+    
+Expy=widgets.FloatSlider(
+    value=Step_Time,
+    min=Stime,
+    max=Etime-Stime,
+    step=Step_Time,
+    description='Maturity:',
+    disabled=False,
+    continuous_update=False,
+    orientation='horizontal',
+    readout=True,
+    readout_format='.2f'
+)
+
+interact(plot_func, Maturity=Expy)
